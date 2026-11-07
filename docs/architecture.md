@@ -16,10 +16,10 @@ CUDA available: False
 Device: cpu
 
 ### Run pipeline
-OPENAI_API_KEY="ollama" uv run speech-to-speech serve \
+OPENAI_API_KEY="unused" uv run speech-to-speech serve \
     --stt faster-whisper \
     --llm_backend chat-completions \
-    --responses-api-base-url http://10.0.0.202 \
+    --responses-api-base-url http://10.0.0.202:11434/v1 \
     --model_name "qwen2.5vl:3b" \
     --tts pocket \
     --pocket_tts_device cpu \
