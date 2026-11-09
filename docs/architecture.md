@@ -9,7 +9,7 @@ Using [huggingface speech-to-speech](https://github.com/huggingface/speech-to-sp
 python3 -m venv .venv
 source .venv/bin/activate
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-pip install "speech-to-speech[faster-whisper,pocket]"
+pip install "speech-to-speech[faster-whisper,pocket]==1.1.0"
 ```
 
 #### Check installation (No CUDA)
