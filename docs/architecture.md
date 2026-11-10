@@ -21,13 +21,21 @@ Device: cpu
 
 ### Run pipeline
 ```
-OPENAI_API_KEY="unused" uv run speech-to-speech serve \
-    --stt faster-whisper \
-    --llm_backend chat-completions \
-    --responses-api-base-url http://10.0.0.202:11434/v1 \
-    --model_name "qwen2.5vl:3b" \
-    --tts pocket \
-    --pocket_tts_device cpu \
-    --host 0.0.0.0 \
-    --port 8765
+HF_HUB_OFFLINE=1 \
+OPENAI_API_KEY="not-needed" \
+uv run speech-to-speech serve \
+  --stt faster-whisper \
+  --faster_whisper_stt_model_name medium \
+  --faster_whisper_stt_device cpu \
+  --faster_whisper_stt_compute_type int8 \
+  --faster_whisper_stt_gen_beam_size 5 \
+  --faster_whisper_stt_gen_language auto \
+  --llm_backend chat-completions \
+  --responses-api-base-url http://10.0.0.202:11434/v1 \
+  --model_name "qwen2.5vl:3b" \
+  --tts pocket \
+  --pocket_tts_device cpu \
+  --host 0.0.0.0 \
+  --port 8765 \
+  --enable_visemes
 ```
