@@ -1,0 +1,6 @@
+# --- S2S Viseme-to-Jaw ROS 2 Bridge Dependencies ---
+# Handles the real-time full-duplex communication with the remote VM
+websockets>=12.0
+
+# Optional: Handles heavy array mappings if you extend the code later for multi-array formats
+numpy>=1.22.0
