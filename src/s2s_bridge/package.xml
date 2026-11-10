@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<?xml-model href="http://ros.org" schematypens="http://w3.org"?>
+<package format3>
+  <name>s2s_bridge</name>
+  <version>0.1.0</version>
+  <description>ROS 2 Bridge mapping Speech-to-Speech metadata to hardware parameters.</description>
+  <maintainer email="your.email@example.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>python3-websockets</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
