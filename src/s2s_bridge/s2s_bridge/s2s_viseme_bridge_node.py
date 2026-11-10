@@ -13,9 +13,10 @@ class SpeechToSpeechVisemeBridge(Node):
         
         self.jaw_pub = self.get_publisher(Float32, '/jaw', 10)
         
-        self.declare_parameter('server_url', 'ws://192.168.1.50:8765/v1/realtime')
+        self.declare_parameter('server_url', 'ws://192.168.0.202:8765/v1/realtime')
         self.server_url = self.get_parameter('server_url').get_parameter_value().string_value
-        
+        self.get_logger().info(f'Configured target S2S server URL: {self.server_url}')
+
         # Map viseme classifications to structural mouth openness positions (0.0 to 1.0)
         # Adjust these values depending on how wide your robot servo should throw
         self.viseme_jaw_map = {
