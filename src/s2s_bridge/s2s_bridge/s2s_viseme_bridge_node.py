@@ -10,9 +10,9 @@ import threading
 class SpeechToSpeechVisemeBridge(Node):
     def __init__(self):
         super().__init__('s2s_viseme_bridge_node')
-        
-        self.jaw_pub = self.get_publisher(Float32, '/jaw', 10)
-        
+
+        self.jaw_pub = self.create_publisher(Float32, '/jaw', 10
+
         self.declare_parameter('server_url', 'ws://192.168.0.202:8765/v1/realtime')
         self.server_url = self.get_parameter('server_url').get_parameter_value().string_value
         self.get_logger().info(f'Configured target S2S server URL: {self.server_url}')
