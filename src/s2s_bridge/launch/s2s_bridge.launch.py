@@ -15,14 +15,24 @@ def generate_launch_description():
         description='Full path to the ROS 2 parameters YAML file'
     )
 
+    server_url_arg = DeclareLaunchArgument(
+        'server_url',
+        default_value='ws://10.0.0.202:8765/v1/realtime',
+        description='WebSocket URL for the realtime S2S server'
+    )
+
     return LaunchDescription([
         params_file_arg,
+        server_url_arg,
         Node(
             package='s2s_bridge',
             executable='viseme_node',
             name='s2s_viseme_bridge',
             output='screen',
-            parameters=[LaunchConfiguration('params_file')]
+            parameters=[
+                LaunchConfiguration('params_file'),
+                {'server_url': LaunchConfiguration('server_url')}
+            ]
         )
     ])
 
