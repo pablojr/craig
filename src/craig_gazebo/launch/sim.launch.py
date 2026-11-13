@@ -1,7 +1,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command
 from launch_ros.actions import Node
@@ -10,8 +10,21 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
     desc_pkg = get_package_share_directory('inmoov_description')
+    meshes_pkg = get_package_share_directory('inmoov_meshes')
     gz_pkg = get_package_share_directory('craig_gazebo')
     ros_gz_sim_pkg = get_package_share_directory('ros_gz_sim')
+
+    # Gazebo resolves model://inmoov_meshes/... by searching parent folders in GZ_SIM_RESOURCE_PATH
+    meshes_parent_dir = os.path.dirname(meshes_pkg)
+    existing_gz_path = os.environ.get('GZ_SIM_RESOURCE_PATH', '')
+    gz_resource_path = (
+        f'{meshes_parent_dir}:{existing_gz_path}' if existing_gz_path else meshes_parent_dir
+    )
+
+    set_gz_resource_path = SetEnvironmentVariable(
+        name='GZ_SIM_RESOURCE_PATH',
+        value=gz_resource_path,
+    )
 
     xacro_file = os.path.join(desc_pkg, 'robots', 'inmoov.urdf.xacro')
     robot_description = ParameterValue(Command(['xacro ', xacro_file]), value_type=str)
@@ -45,6 +58,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        set_gz_resource_path,
         gz_sim,
         robot_state_publisher,
         spawn_entity,
