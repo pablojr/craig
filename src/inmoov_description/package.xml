@@ -1,0 +1,26 @@
+<package format="3">
+  <name>inmoov_description</name>
+  <version>0.1.0</version>
+  <description>
+    URDF and mesh files for InMoov robot.
+  </description>
+  <maintainer email="supertick@gmail.com">Greg Perry</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">https://discord.gg/8NYKAUTxmZ</url>
+  <url type="bugtracker">https://github.com/MyRobotLab/myrobotlab/issues</url>
+
+  <author>Greg Perry</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>urdf</depend>
+  <depend>xacro</depend>
+  <depend>gazebo_ros</depend>
+  <depend>rviz2</depend>
+  <depend>robot_state_publisher</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
