@@ -86,6 +86,7 @@ class SpeechToSpeechVisemeBridge(Node):
         self._stop_event = None
         self._server = None
         self._stopping = threading.Event()
+        self._playback_tasks = set()
 
         self.get_logger().info(f"Upstream S2S server: {self.server_url}")
         self.get_logger().info(
@@ -124,6 +125,7 @@ class SpeechToSpeechVisemeBridge(Node):
                 )
                 await self._stop_event.wait()
         finally:
+            await self._cancel_viseme_playback(reset_jaw=False)
             self._server = None
             self._loop = None
             self._stop_event = None
@@ -228,7 +230,7 @@ class SpeechToSpeechVisemeBridge(Node):
         except Exception as exc:
             self.get_logger().error(f"Proxy connection error: {exc}")
         finally:
-            self.publish_jaw(0.0)
+            await self._cancel_viseme_playback(reset_jaw=True)
 
             if upstream_ws is not None:
                 with suppress(Exception):
@@ -243,11 +245,7 @@ class SpeechToSpeechVisemeBridge(Node):
         """Forward frames unchanged, optionally consuming viseme events."""
         async for message in source:
             if inspect_visemes and isinstance(message, str):
-                try:
-                    data = json.loads(message)
-                except (json.JSONDecodeError, TypeError):
-                    data = None
-
+                data = self._parse_event_json(message)
                 if isinstance(data, dict) and self._handle_server_event(data):
                     # Viseme events are consumed by the proxy. All other
                     # messages are forwarded byte-for-byte/text-for-text.
@@ -255,29 +253,104 @@ class SpeechToSpeechVisemeBridge(Node):
 
             await destination.send(message)
 
+    @staticmethod
+    def _parse_event_json(message):
+        """Parse raw JSON string, stripping optional 'EVENT:' prefix if present."""
+        clean_msg = message.strip()
+        if clean_msg.startswith("EVENT:"):
+            clean_msg = clean_msg[len("EVENT:"):].strip()
+        try:
+            return json.loads(clean_msg)
+        except (json.JSONDecodeError, TypeError):
+            return None
+
     def _handle_server_event(self, data):
-        """Return True when an event was intercepted as a viseme event."""
+        """Return True when an event was intercepted and consumed as a viseme event."""
         event_type = data.get("type")
 
-        if event_type == "viseme" or "viseme" in data:
-            viseme_label = data.get("viseme")
-            self.get_logger().debug(
-                f"Intercepted viseme event: {viseme_label!r}"
-            )
-
-            if viseme_label in self.viseme_jaw_map:
-                self.publish_jaw(self.viseme_jaw_map[viseme_label])
-            else:
-                self.get_logger().warning(
-                    f"Viseme {viseme_label!r} has no jaw mapping"
+        if event_type == "speech_to_speech.output_audio.visemes" or "visemes" in data:
+            visemes = data.get("visemes")
+            if isinstance(visemes, list):
+                self.get_logger().debug(
+                    f"Intercepted viseme batch ({len(visemes)} items)"
                 )
+                self._schedule_visemes(visemes)
             return True
 
-        if event_type == "speech.stopped":
-            self.get_logger().debug("Speech stopped; resetting jaw")
-            self.publish_jaw(0.0)
+        # Cancel active jaw motion and close mouth on interruption or speech stop
+        if event_type in (
+            "speech.stopped",
+            "input_audio_buffer.speech_started",
+            "response.cancelled",
+        ):
+            self.get_logger().debug(f"Event {event_type}; resetting jaw")
+            self._schedule_cancel_and_reset()
 
         return False
+
+    def _schedule_visemes(self, visemes):
+        """Schedule timed viseme playback without blocking the WebSocket relay."""
+        if self._loop is None or not visemes:
+            return
+
+        # Cancel any overlapping playback from an earlier response/chunk
+        for task in list(self._playback_tasks):
+            task.cancel()
+
+        task = self._loop.create_task(self._play_viseme_sequence(visemes))
+        self._playback_tasks.add(task)
+        task.add_done_callback(self._playback_tasks.discard)
+
+    def _schedule_cancel_and_reset(self):
+        """Cancel active viseme tasks from synchronous event handler and close jaw."""
+        for task in list(self._playback_tasks):
+            task.cancel()
+        self.publish_jaw(0.0)
+
+    async def _cancel_viseme_playback(self, reset_jaw=True):
+        """Await cancellation of all active viseme playback tasks."""
+        tasks = list(self._playback_tasks)
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        if reset_jaw:
+            self.publish_jaw(0.0)
+
+    async def _play_viseme_sequence(self, visemes):
+        """Publish jaw positions according to each viseme's start_s and end_s."""
+        loop = asyncio.get_running_loop()
+        base_time = loop.time()
+
+        try:
+            # Sort chronologically in case entries arrive out of order
+            ordered = sorted(visemes, key=lambda item: float(item.get("start_s", 0.0)))
+
+            for item in ordered:
+                viseme_id = int(item.get("viseme", 0))
+                start_s = float(item.get("start_s", 0.0))
+
+                delay = (base_time + start_s) - loop.time()
+                if delay > 0:
+                    await asyncio.sleep(delay)
+
+                jaw_val = self.ms_viseme_jaw_map.get(viseme_id)
+                if jaw_val is not None:
+                    self.publish_jaw(jaw_val)
+                else:
+                    self.get_logger().warning(
+                        f"Viseme {viseme_id!r} has no jaw mapping"
+                    )
+
+            # Close the jaw at the end_s timestamp of the final viseme
+            last_end_s = float(ordered[-1].get("end_s", 0.0))
+            end_delay = (base_time + last_end_s) - loop.time()
+            if end_delay > 0:
+                await asyncio.sleep(end_delay)
+
+            self.publish_jaw(0.0)
+        except asyncio.CancelledError:
+            pass
 
     def publish_jaw(self, value):
         msg = Float32()
@@ -318,4 +391,3 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
-
