@@ -86,7 +86,14 @@ class SpeechToSpeechVisemeBridge(Node):
         self._stop_event = None
         self._server = None
         self._stopping = threading.Event()
+
+        # Per-response timeline state so streaming/cumulative chunks stay synced
         self._playback_tasks = set()
+        self._active_response_id = None
+        self._response_base_time = None
+        self._scheduled_keys = set()
+        self._latest_end_s = 0.0
+        self._end_reset_task = None
 
         self.get_logger().info(f"Upstream S2S server: {self.server_url}")
         self.get_logger().info(
@@ -270,46 +277,132 @@ class SpeechToSpeechVisemeBridge(Node):
 
         if event_type == "speech_to_speech.output_audio.visemes" or "visemes" in data:
             visemes = data.get("visemes")
+            response_id = data.get("response_id") or data.get("item_id") or "default"
             if isinstance(visemes, list):
-                self.get_logger().debug(
-                    f"Intercepted viseme batch ({len(visemes)} items)"
-                )
-                self._schedule_visemes(visemes)
+                self._schedule_visemes(visemes, response_id)
             return True
 
-        # Cancel active jaw motion and close mouth on interruption or speech stop
+        # Cancel active jaw motion and close mouth on user interruption or cancellation
         if event_type in (
-            "speech.stopped",
             "input_audio_buffer.speech_started",
             "response.cancelled",
         ):
-            self.get_logger().debug(f"Event {event_type}; resetting jaw")
+            self.get_logger().debug(f"Event {event_type}; cancelling playback & resetting jaw")
             self._schedule_cancel_and_reset()
 
         return False
 
-    def _schedule_visemes(self, visemes):
-        """Schedule timed viseme playback without blocking the WebSocket relay."""
+    def _reset_response_state(self):
+        """Cancel all scheduled tasks and clear per-response tracking."""
+        for task in list(self._playback_tasks):
+            task.cancel()
+        self._playback_tasks.clear()
+
+        if self._end_reset_task is not None:
+            self._end_reset_task.cancel()
+            self._end_reset_task = None
+
+        self._active_response_id = None
+        self._response_base_time = None
+        self._scheduled_keys.clear()
+        self._latest_end_s = 0.0
+
+    def _schedule_visemes(self, visemes, response_id):
+        """Schedule timed viseme playback anchored to the response start time."""
         if self._loop is None or not visemes:
             return
 
-        # Cancel any overlapping playback from an earlier response/chunk
-        for task in list(self._playback_tasks):
-            task.cancel()
+        now = self._loop.time()
 
-        task = self._loop.create_task(self._play_viseme_sequence(visemes))
-        self._playback_tasks.add(task)
-        task.add_done_callback(self._playback_tasks.discard)
+        # Start a fresh timeline only when a new response begins
+        if response_id != self._active_response_id or self._response_base_time is None:
+            self._reset_response_state()
+            self._active_response_id = response_id
+            self._response_base_time = now
+            self.get_logger().debug(
+                f"Started viseme timeline for response_id={response_id}"
+            )
+
+        base_time = self._response_base_time
+        newly_scheduled = 0
+
+        for item in visemes:
+            viseme_id = int(item.get("viseme", 0))
+            start_s = float(item.get("start_s", 0.0))
+            end_s = float(item.get("end_s", start_s))
+
+            # Deduplicate cumulative chunks (e.g., 3 -> 6 -> 11 -> 14 items)
+            key = (round(start_s, 4), round(end_s, 4), viseme_id)
+            if key in self._scheduled_keys:
+                continue
+            self._scheduled_keys.add(key)
+            newly_scheduled += 1
+
+            if end_s > self._latest_end_s:
+                self._latest_end_s = end_s
+
+            target_time = base_time + start_s
+            task = self._loop.create_task(
+                self._publish_at(target_time, viseme_id, start_s)
+            )
+            self._playback_tasks.add(task)
+            task.add_done_callback(self._playback_tasks.discard)
+
+        if newly_scheduled > 0:
+            self.get_logger().debug(
+                f"Batch had {len(visemes)} items; scheduled {newly_scheduled} new visemes "
+                f"(max end_s={self._latest_end_s:.3f}s)"
+            )
+            # Reschedule the final jaw-close timer to the new latest end_s
+            if self._end_reset_task is not None:
+                self._end_reset_task.cancel()
+            final_target_time = base_time + self._latest_end_s
+            self._end_reset_task = self._loop.create_task(
+                self._close_jaw_at(final_target_time, response_id)
+            )
+
+    async def _publish_at(self, target_time, viseme_id, start_s):
+        """Sleep until target_time and publish the mapped jaw position."""
+        try:
+            delay = target_time - asyncio.get_running_loop().time()
+            if delay > 0:
+                await asyncio.sleep(delay)
+
+            jaw_val = self.ms_viseme_jaw_map.get(viseme_id)
+            if jaw_val is not None:
+                self.publish_jaw(jaw_val, viseme_id=viseme_id, start_s=start_s)
+            else:
+                self.get_logger().warning(
+                    f"Viseme {viseme_id!r} has no jaw mapping"
+                )
+        except asyncio.CancelledError:
+            pass
+
+    async def _close_jaw_at(self, target_time, response_id):
+        """Close the jaw after the final viseme of the response finishes."""
+        try:
+            delay = target_time - asyncio.get_running_loop().time()
+            if delay > 0:
+                await asyncio.sleep(delay)
+
+            if self._active_response_id == response_id:
+                self.publish_jaw(0.0, viseme_id=0, start_s=self._latest_end_s)
+        except asyncio.CancelledError:
+            pass
 
     def _schedule_cancel_and_reset(self):
         """Cancel active viseme tasks from synchronous event handler and close jaw."""
-        for task in list(self._playback_tasks):
-            task.cancel()
+        self._reset_response_state()
         self.publish_jaw(0.0)
 
     async def _cancel_viseme_playback(self, reset_jaw=True):
         """Await cancellation of all active viseme playback tasks."""
         tasks = list(self._playback_tasks)
+        if self._end_reset_task is not None:
+            tasks.append(self._end_reset_task)
+
+        self._reset_response_state()
+
         for task in tasks:
             task.cancel()
         if tasks:
@@ -317,46 +410,16 @@ class SpeechToSpeechVisemeBridge(Node):
         if reset_jaw:
             self.publish_jaw(0.0)
 
-    async def _play_viseme_sequence(self, visemes):
-        """Publish jaw positions according to each viseme's start_s and end_s."""
-        loop = asyncio.get_running_loop()
-        base_time = loop.time()
-
-        try:
-            # Sort chronologically in case entries arrive out of order
-            ordered = sorted(visemes, key=lambda item: float(item.get("start_s", 0.0)))
-
-            for item in ordered:
-                viseme_id = int(item.get("viseme", 0))
-                start_s = float(item.get("start_s", 0.0))
-
-                delay = (base_time + start_s) - loop.time()
-                if delay > 0:
-                    await asyncio.sleep(delay)
-
-                jaw_val = self.ms_viseme_jaw_map.get(viseme_id)
-                if jaw_val is not None:
-                    self.publish_jaw(jaw_val)
-                else:
-                    self.get_logger().warning(
-                        f"Viseme {viseme_id!r} has no jaw mapping"
-                    )
-
-            # Close the jaw at the end_s timestamp of the final viseme
-            last_end_s = float(ordered[-1].get("end_s", 0.0))
-            end_delay = (base_time + last_end_s) - loop.time()
-            if end_delay > 0:
-                await asyncio.sleep(end_delay)
-
-            self.publish_jaw(0.0)
-        except asyncio.CancelledError:
-            pass
-
-    def publish_jaw(self, value):
+    def publish_jaw(self, value, viseme_id=None, start_s=None):
         msg = Float32()
         msg.data = float(value)
         self.jaw_pub.publish(msg)
-        self.get_logger().debug(f"Published /jaw: {msg.data}")
+        if viseme_id is not None and start_s is not None:
+            self.get_logger().debug(
+                f"Published /jaw: {msg.data:.2f} (viseme={viseme_id}, t={start_s:.3f}s)"
+            )
+        else:
+            self.get_logger().debug(f"Published /jaw: {msg.data:.2f}")
 
     def destroy_node(self):
         self._stopping.set()
