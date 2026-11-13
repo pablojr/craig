@@ -13,7 +13,7 @@ setup(
             ['resource/' + package_name] if os.path.exists('resource/' + package_name) else []),
         ('share/' + package_name, ['package.xml']),
         # Ensures launch files are copied to the installation directory
-        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
+        (os.path.join('share', package_name, 'launch'), glob('config/*.yaml', os.path.join('launch', '*launch.[pxy][yma]*'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
