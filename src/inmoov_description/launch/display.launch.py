@@ -4,11 +4,15 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import Command, LaunchConfiguration
+from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     xacro_file = os.path.join(get_package_share_directory('inmoov_description'), 'robots', 'inmoov.urdf.xacro')
     rviz_config_file = os.path.join(get_package_share_directory('inmoov_description'), 'urdf.rviz')
+
+    # Wrap Command in ParameterValue(..., value_type=str) to prevent YAML parsing errors in ROS 2
+    robot_description = ParameterValue(Command(['xacro ', xacro_file]), value_type=str)
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -20,7 +24,12 @@ def generate_launch_description():
             executable='robot_state_publisher',
             name='robot_state_publisher',
             output='screen',
-            parameters=[{'use_sim_time': use_sim_time, 'robot_description': Command(['xacro ', xacro_file])}]
+            parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_description}]
+        ),
+        Node(
+            package='joint_state_publisher_gui',
+            executable='joint_state_publisher_gui',
+            name='joint_state_publisher_gui'
         ),
         Node(
             package='rviz2',
@@ -30,3 +39,4 @@ def generate_launch_description():
             arguments=['-d', rviz_config_file]
         )
     ])
+
