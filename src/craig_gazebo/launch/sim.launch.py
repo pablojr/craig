@@ -1,9 +1,9 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable
+from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable, DeclareLaunchArgument
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command
+from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -46,7 +46,11 @@ def generate_launch_description():
     spawn_entity = Node(
         package='ros_gz_sim',
         executable='create',
-        arguments=['-name', 'inmoov', '-topic', 'robot_description'],
+        arguments=[
+            '-name', 'inmoov',
+            '-topic', 'robot_description',
+            '-Y', LaunchConfiguration('spawn_yaw'),
+        ],
         output='screen',
     )
 
@@ -58,10 +62,14 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'spawn_yaw',
+            default_value='3.14159',
+            description='Initial InMoov yaw in radians; default faces the robot toward the camera.',
+        ),
         set_gz_resource_path,
         gz_sim,
         robot_state_publisher,
         spawn_entity,
         gz_bridge,
     ])
-
