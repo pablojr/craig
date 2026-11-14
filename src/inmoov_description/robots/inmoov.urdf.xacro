@@ -138,9 +138,12 @@
     <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
       <joint_name>jaw_joint</joint_name>
       <topic>/model/inmoov/joint/jaw_joint/0/cmd_pos</topic>
-      <p_gain>10</p_gain>
+      <!-- The default gain (10) cannot overcome the jaw link's gravity torque
+           when commanding a return from its open position. Keep I disabled to
+           avoid windup; D damps the faster proportional response. -->
+      <p_gain>200</p_gain>
       <i_gain>0</i_gain>
-      <d_gain>0</d_gain>
+      <d_gain>10</d_gain>
     </plugin>
   </gazebo>
 
