@@ -2,7 +2,7 @@
 
 <robot name="inmoov" xmlns:xacro="http://ros.org/wiki/xacro">
 
-<xacro:macro name="head" params="covers">
+<xacro:macro name="head" params="covers jaw_upper_limit:=${jaw_joint_upper}">
 
   <link name="head_base_link">
     <visual>
@@ -67,6 +67,7 @@
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <xacro:frame_color/>
     </visual>
+    <xacro:frame_color/>
     <xacro:earrightv1_inertial/>
   </link>
 
@@ -80,7 +81,7 @@
 
   <joint name="jaw_joint" type="revolute">
    <axis xyz="0 1 0"/>
-   <limit effort="1000.0" lower="${jaw_joint_lower}" upper="${jaw_joint_upper}" velocity="${jaw_joint_velocity}" />
+   <limit effort="1000.0" lower="${jaw_joint_lower}" upper="${jaw_upper_limit}" velocity="${jaw_joint_velocity}" />
    <origin rpy="0 0.09 0" xyz="0.0375 0.0005 0.0437"/>
    <parent link="head_link"/>
    <child link="jaw_link"/>
