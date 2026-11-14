@@ -27,7 +27,11 @@ def generate_launch_description():
     )
 
     xacro_file = os.path.join(desc_pkg, 'robots', 'inmoov.urdf.xacro')
-    robot_description = ParameterValue(Command(['xacro ', xacro_file]), value_type=str)
+    # Widen only the simulation model jaw limit to make the viseme motion visible.
+    robot_description = ParameterValue(
+        Command(['xacro ', xacro_file, ' jaw_upper_limit:=0.349']),
+        value_type=str,
+    )
 
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(

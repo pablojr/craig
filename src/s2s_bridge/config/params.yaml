@@ -3,8 +3,7 @@ s2s_viseme_bridge:
     server_url: 'ws://10.0.0.202:8765/v1/realtime'
     listen_host: '0.0.0.0'
     listen_port: 18765
-    jaw_min: 0.0            # 0.0 degrees
-    jaw_max: 0.349          # 20.0 degrees in radians (match maxGoal in config.yaml)
+    jaw_min: 0.0
+    jaw_max: 0.349
     attack_tau_s: 0.030
     release_tau_s: 0.110
-
