@@ -3,7 +3,7 @@ project(inmoov_description)
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY launch robots urdf
+install(DIRECTORY launch robots urdf config
   DESTINATION share/${PROJECT_NAME}
 )
 
