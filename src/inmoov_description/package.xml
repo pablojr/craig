@@ -22,6 +22,7 @@
   <depend>rclpy</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <exec_depend>usb_cam</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
