@@ -7,5 +7,12 @@ install(DIRECTORY launch robots urdf
   DESTINATION share/${PROJECT_NAME}
 )
 
-ament_package()
+install(FILES urdf.rviz
+  DESTINATION share/${PROJECT_NAME}
+)
 
+install(PROGRAMS scripts/jaw_to_joint_states.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+ament_package()
