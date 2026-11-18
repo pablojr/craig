@@ -13,12 +13,12 @@ joints:
   jaw_joint:             {home: 0.0, min: 0.0, max: 0.087266}
   l_shoulder_lift_joint: {home: 0.0, min: -2.356194, max: 0.785398}
   l_shoulder_out_joint:  {home: 0.087266, min: 0.087266, max: 1.047198}
-  l_upper_arm_roll_joint:{home: 0.0, min: -1.570796, max: 1.570796}
+  l_upper_arm_roll_joint: {home: 0.0, min: -1.570796, max: 1.570796}
   l_elbow_flex_joint:    {home: -0.261799, min: -1.483530, max: -0.261799}
   l_wrist_roll_joint:    {home: 0.0, min: 0.0, max: 3.141593}
   r_shoulder_lift_joint: {home: 0.0, min: -2.356194, max: 0.785398}
   r_shoulder_out_joint:  {home: -0.087266, min: -1.047198, max: -0.087266}
-  r_upper_arm_roll_joint:{home: 0.0, min: -1.570796, max: 1.570796}
+  r_upper_arm_roll_joint: {home: 0.0, min: -1.570796, max: 1.570796}
   r_elbow_flex_joint:    {home: -0.261799, min: -1.396263, max: -0.261799}
   r_wrist_roll_joint:    {home: 0.0, min: -3.141593, max: 0.0}
   l_thumb_joint:         {home: 0.0, min: -0.087266, max: 1.134464}
