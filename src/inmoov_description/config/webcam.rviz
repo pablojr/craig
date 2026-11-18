@@ -8,7 +8,7 @@ Visualization Manager:
   Displays:
     - Class: rviz_default_plugins/Image
       Enabled: true
-      Name: Webcam
+      Name: Face tracking camera
       Normalize Range: true
       Queue Size: 2
       Topic:
@@ -16,7 +16,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Best Effort
-        Value: /camera/image_raw
+        Value: /camera/tracking_image
       Transport Hint: raw
       Value: true
   Enabled: true

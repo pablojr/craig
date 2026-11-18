@@ -22,6 +22,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'launch_rviz', default_value='true',
             description='Launch RViz in the VM X-forwarded display'),
+        DeclareLaunchArgument(
+            'launch_tracker', default_value='true',
+            description='Run face detection on /camera/image_raw'),
+        DeclareLaunchArgument(
+            'enable_actuation', default_value='false',
+            description='Explicitly enable InMoov neck movement'),
         Node(
             package='usb_cam',
             executable='usb_cam_node_exe',
@@ -37,6 +43,18 @@ def generate_launch_description():
                 'frame_id': 'camera_optical_frame',
                 'io_method': 'mmap',
             }],
+        ),
+        Node(
+            package='inmoov_description',
+            executable='face_tracker_node.py',
+            name='face_tracker',
+            output='screen',
+            parameters=[{
+                'image_topic': '/camera/image_raw',
+                'enable_actuation': ParameterValue(
+                    LaunchConfiguration('enable_actuation'), value_type=bool),
+            }],
+            condition=IfCondition(LaunchConfiguration('launch_tracker')),
         ),
         Node(
             package='rviz2',
