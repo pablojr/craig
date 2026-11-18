@@ -1,95 +1,182 @@
-# Predefined gestures for inmoov_motion_manager.
-# Positions are in radians and within the URDF/config limits.
-# Mimic joints are deliberately omitted; the URDF publishes their derived motion.
+# Configuration schema consumed by motion_manager.py.
+# Joint positions and limits are in radians. Values are based on the InMoov
+# URDF and src/inmoov_bringup/config/config.yaml. Keep hardware disabled while
+# validating these example poses; this node is intended for RViz visualization.
+joints:
+  waist_pan_joint:       {home: 0.0, min: -1.570796, max: 1.570796}
+  waist_roll_joint:      {home: 0.0, min: -0.261799, max: 0.261799}
+  head_pan_joint:        {home: 0.0, min: -1.745329, max: 1.570796}
+  head_tilt_joint:       {home: 0.0, min: -0.349066, max: 0.349066}
+  head_roll_joint:       {home: 0.0, min: -0.261799, max: 0.261799}
+  eyes_pan_joint:        {home: 0.0, min: -0.523599, max: 0.523599}
+  eyes_tilt_joint:       {home: 0.0, min: -0.261799, max: 0.261799}
+  jaw_joint:             {home: 0.0, min: 0.0, max: 0.087266}
+  l_shoulder_lift_joint: {home: 0.0, min: -2.356194, max: 0.785398}
+  l_shoulder_out_joint:  {home: 0.087266, min: 0.087266, max: 1.047198}
+  l_upper_arm_roll_joint:{home: 0.0, min: -1.570796, max: 1.570796}
+  l_elbow_flex_joint:    {home: -0.261799, min: -1.483530, max: -0.261799}
+  l_wrist_roll_joint:    {home: 0.0, min: 0.0, max: 3.141593}
+  r_shoulder_lift_joint: {home: 0.0, min: -2.356194, max: 0.785398}
+  r_shoulder_out_joint:  {home: -0.087266, min: -1.047198, max: -0.087266}
+  r_upper_arm_roll_joint:{home: 0.0, min: -1.570796, max: 1.570796}
+  r_elbow_flex_joint:    {home: -0.261799, min: -1.396263, max: -0.261799}
+  r_wrist_roll_joint:    {home: 0.0, min: -3.141593, max: 0.0}
+  l_thumb_joint:         {home: 0.0, min: -0.087266, max: 1.134464}
+  l_index_joint:         {home: 0.0, min: -0.087266, max: 1.483530}
+  l_middle_joint:        {home: 0.0, min: -0.087266, max: 1.483530}
+  l_ring_joint:          {home: 0.0, min: -0.087266, max: 1.483530}
+  l_pinky_joint:         {home: 0.0, min: -0.087266, max: 1.483530}
+  r_thumb_joint:         {home: 0.0, min: -0.087266, max: 1.134464}
+  r_index_joint:         {home: 0.0, min: -0.087266, max: 1.483530}
+  r_middle_joint:        {home: 0.0, min: -0.087266, max: 1.483530}
+  r_ring_joint:          {home: 0.0, min: -0.087266, max: 1.483530}
+  r_pinky_joint:         {home: 0.0, min: -0.087266, max: 1.483530}
+
 gestures:
   neutral:
-    duration_sec: 2.0
-    positions:
-      waist_pan_joint: 0.0
-      waist_roll_joint: 0.0
-      head_pan_joint: 0.0
-      head_tilt_joint: 0.0
-      head_roll_joint: 0.0
-      eyes_pan_joint: 0.0
-      eyes_tilt_joint: 0.0
-      jaw_joint: 0.0
-      l_shoulder_lift_joint: 0.785398
-      l_shoulder_out_joint: 0.087266
-      l_upper_arm_roll_joint: -1.570796
-      l_elbow_flex_joint: -0.261799
-      r_shoulder_lift_joint: 0.785398
-      r_shoulder_out_joint: -0.087266
-      r_upper_arm_roll_joint: 1.570796
-      r_elbow_flex_joint: -0.261799
+    frames:
+      - duration: 2.0
+        positions:
+          waist_pan_joint: 0.0
+          waist_roll_joint: 0.0
+          head_pan_joint: 0.0
+          head_tilt_joint: 0.0
+          head_roll_joint: 0.0
+          eyes_pan_joint: 0.0
+          eyes_tilt_joint: 0.0
+          jaw_joint: 0.0
+          l_shoulder_lift_joint: 0.0
+          l_shoulder_out_joint: 0.087266
+          l_upper_arm_roll_joint: 0.0
+          l_elbow_flex_joint: -0.261799
+          l_wrist_roll_joint: 0.0
+          r_shoulder_lift_joint: 0.0
+          r_shoulder_out_joint: -0.087266
+          r_upper_arm_roll_joint: 0.0
+          r_elbow_flex_joint: -0.261799
+          r_wrist_roll_joint: 0.0
+          l_thumb_joint: 0.0
+          l_index_joint: 0.0
+          l_middle_joint: 0.0
+          l_ring_joint: 0.0
+          l_pinky_joint: 0.0
+          r_thumb_joint: 0.0
+          r_index_joint: 0.0
+          r_middle_joint: 0.0
+          r_ring_joint: 0.0
+          r_pinky_joint: 0.0
+
+  raise_left_hand:
+    frames:
+      - duration: 2.0
+        positions:
+          l_shoulder_lift_joint: 0.45
+          l_shoulder_out_joint: 0.65
+          l_upper_arm_roll_joint: 0.0
+          l_elbow_flex_joint: -0.75
+
+  raise_right_hand:
+    frames:
+      - duration: 2.0
+        positions:
+          r_shoulder_lift_joint: 0.45
+          r_shoulder_out_joint: -0.65
+          r_upper_arm_roll_joint: 0.0
+          r_elbow_flex_joint: -0.75
+
+  wave_left:
+    frames:
+      - duration: 1.5
+        positions:
+          l_shoulder_lift_joint: 0.45
+          l_shoulder_out_joint: 0.65
+          l_upper_arm_roll_joint: 0.0
+          l_elbow_flex_joint: -0.75
+          l_wrist_roll_joint: 0.45
+      - duration: 0.6
+        positions:
+          l_wrist_roll_joint: 1.0
+      - duration: 0.6
+        positions:
+          l_wrist_roll_joint: 0.45
+      - duration: 0.6
+        positions:
+          l_wrist_roll_joint: 1.0
+
+  wave_right:
+    frames:
+      - duration: 1.5
+        positions:
+          r_shoulder_lift_joint: 0.45
+          r_shoulder_out_joint: -0.65
+          r_upper_arm_roll_joint: 0.0
+          r_elbow_flex_joint: -0.75
+          r_wrist_roll_joint: -0.45
+      - duration: 0.6
+        positions:
+          r_wrist_roll_joint: -1.0
+      - duration: 0.6
+        positions:
+          r_wrist_roll_joint: -0.45
+      - duration: 0.6
+        positions:
+          r_wrist_roll_joint: -1.0
+
+  nod_yes:
+    frames:
+      - duration: 0.5
+        positions: {head_tilt_joint: 0.18}
+      - duration: 0.5
+        positions: {head_tilt_joint: -0.18}
+      - duration: 0.5
+        positions: {head_tilt_joint: 0.0}
 
   look_left:
-    duration_sec: 1.0
-    positions:
-      head_pan_joint: 0.610865
-      eyes_pan_joint: 0.349066
+    frames:
+      - duration: 1.0
+        positions: {head_pan_joint: 0.6, eyes_pan_joint: 0.3}
 
   look_right:
-    duration_sec: 1.0
-    positions:
-      head_pan_joint: -0.872665
-      eyes_pan_joint: -0.349066
-
-  nod:
-    duration_sec: 1.2
-    positions:
-      head_tilt_joint: 0.174533
-  look_up:
-    duration_sec: 1.0
-    positions:
-      head_tilt_joint: 0.349066
-      eyes_tilt_joint: -0.261799
-  look_down:
-    duration_sec: 1.0
-    positions:
-      head_tilt_joint: -0.349066
-      eyes_tilt_joint: 0.261799
+    frames:
+      - duration: 1.0
+        positions: {head_pan_joint: -0.8, eyes_pan_joint: -0.3}
 
   jaw_open:
-    duration_sec: 0.5
-    positions:
-      jaw_joint: 0.087266
+    frames:
+      - duration: 0.5
+        positions: {jaw_joint: 0.08}
 
   jaw_close:
-    duration_sec: 0.5
-    positions:
-      jaw_joint: 0.0
-  wave:
-    duration_sec: 2.0
-    positions:
-      r_shoulder_lift_joint: 0.785398
-      r_shoulder_out_joint: -0.698132
-      r_upper_arm_roll_joint: 1.570796
-      r_elbow_flex_joint: -1.396263
-      r_wrist_roll_joint: -1.570796
-  hands_open:
-    duration_sec: 1.5
-    positions:
-      l_thumb_joint: -0.087266
-      l_index_joint: -0.087266
-      l_middle_joint: -0.087266
-      l_ring_joint: -0.087266
-      l_pinky_joint: -0.087266
-      r_thumb_joint: -0.087266
-      r_index_joint: -0.087266
-      r_middle_joint: -0.087266
-      r_ring_joint: -0.087266
-      r_pinky_joint: -0.087266
-  hands_closed:
-    duration_sec: 1.5
-    positions:
-      l_thumb_joint: 1.134464
-      l_index_joint: 1.483530
-      l_middle_joint: 1.483530
-      l_ring_joint: 1.483530
-      l_pinky_joint: 1.483530
-      r_thumb_joint: 1.134464
-      r_index_joint: 1.483530
-      r_middle_joint: 1.483530
-      r_ring_joint: 1.483530
-      r_pinky_joint: 1.483530
+    frames:
+      - duration: 0.5
+        positions: {jaw_joint: 0.0}
 
+  hands_open:
+    frames:
+      - duration: 1.5
+        positions:
+          l_thumb_joint: -0.05
+          l_index_joint: -0.05
+          l_middle_joint: -0.05
+          l_ring_joint: -0.05
+          l_pinky_joint: -0.05
+          r_thumb_joint: -0.05
+          r_index_joint: -0.05
+          r_middle_joint: -0.05
+          r_ring_joint: -0.05
+          r_pinky_joint: -0.05
+
+  hands_closed:
+    frames:
+      - duration: 1.5
+        positions:
+          l_thumb_joint: 0.7
+          l_index_joint: 0.8
+          l_middle_joint: 0.8
+          l_ring_joint: 0.8
+          l_pinky_joint: 0.8
+          r_thumb_joint: 0.7
+          r_index_joint: 0.8
+          r_middle_joint: 0.8
+          r_ring_joint: 0.8
+          r_pinky_joint: 0.8
