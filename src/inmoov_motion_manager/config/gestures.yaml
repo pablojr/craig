@@ -1,0 +1,41 @@
+# Predefined poses for inmoov_motion_manager.
+# JointState positions are in radians, matching the URDF convention.
+# Only independently actuated joints are listed; omitted joints retain their
+# current position. Mimic joints (for example l_eye_pan_joint) are not commanded.
+gestures:
+  neutral:
+    duration_sec: 1.5
+    positions:
+      head_pan_joint: 0.0
+      head_tilt_joint: 0.0
+      head_roll_joint: 0.0
+      eyes_pan_joint: 0.0
+      eyes_tilt_joint: 0.0
+      jaw_joint: 0.0
+
+  look_left:
+    duration_sec: 1.0
+    positions:
+      head_pan_joint: 0.35
+      eyes_pan_joint: 0.20
+
+  look_right:
+    duration_sec: 1.0
+    positions:
+      head_pan_joint: -0.35
+      eyes_pan_joint: -0.20
+
+  nod:
+    duration_sec: 1.2
+    positions:
+      head_tilt_joint: 0.18
+
+  jaw_open:
+    duration_sec: 0.5
+    positions:
+      jaw_joint: 0.25
+
+  jaw_close:
+    duration_sec: 0.5
+    positions:
+      jaw_joint: 0.0
