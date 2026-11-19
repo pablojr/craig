@@ -5,6 +5,7 @@ Command interface:
   /robot/action        std_msgs/String containing JSON, e.g.
                        {"action":"raise_hand","side":"left"}
   /robot/action/status std_msgs/String containing JSON status updates
+  /jaw                 std_msgs/Float64 jaw target in radians
 
 This node is intended for RViz visualization. It does not command motors.
 """
@@ -18,7 +19,7 @@ import yaml
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
-from std_msgs.msg import String
+from std_msgs.msg import Float64, String
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -80,6 +81,9 @@ class MotionManager(Node):
         self._frame_start = {}
         self._goal = {}
         self._current_action = None
+        self.jaw_sub = self.create_subscription(
+            Float64, '/jaw', self._on_jaw, 10
+        )
 
         self.timer = self.create_timer(self.dt, self._tick)
         self.get_logger().info(
@@ -95,6 +99,17 @@ class MotionManager(Node):
     def _clamp(self, joint, value):
         lower, upper = self.limits[joint]
         return min(upper, max(lower, float(value)))
+
+    def _on_jaw(self, msg):
+        if 'jaw_joint' not in self.joints:
+            return
+        target = float(msg.data)
+        if not math.isfinite(target):
+            self.get_logger().warning('Ignoring non-finite /jaw target')
+            return
+        with self._lock:
+            self.positions['jaw_joint'] = self._clamp('jaw_joint', target)
+            self._publish_joint_state()
 
     def _publish_status(self, state, action, message=''):
         payload = {
