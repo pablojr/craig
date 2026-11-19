@@ -1,113 +1,81 @@
-# InMoov Motion Manager (RViz first step)
+# InMoov Motion Manager and Intent Bridge
 
-A small ROS 2 Python package for testing predefined InMoov gestures in RViz.
-It publishes `sensor_msgs/JointState`; it does **not** command motors or
-simulate dynamics.
+This ROS 2 package publishes configured `JointState` gestures for RViz and
+provides a separate, deliberately constrained integration node for structured
+robot intents. Neither node commands hardware.
 
-## Important before running
+## Separation from conversation
 
-`config/gestures.yaml` contains illustrative joint names and example angles.
-They are not verified against your InMoov URDF. Replace the names with the
-exact URDF joint names and adjust `home`, `min`, `max`, and gesture positions
-to the joint axes and limits in your robot description.
+`intent_bridge` does not perform NLP and does not connect to or alter the speech
+server. An upstream conversation/intent extractor publishes a structured event
+to `/robot/intent` (`std_msgs/msg/String`). Ordinary dialogue should produce
+`{"intent":"none"}` or no intent event and is never forwarded to the robot.
+Only recognized, allowlisted intents with confidence at or above 0.80 become
+`/robot/action` requests. The conversation pipeline remains responsible for
+answering normally; for an affirmative response such as “Yes, clouds are
+white,” it can emit a `nod_yes` event alongside its normal response.
 
-Do not run the example trajectories unchanged against hardware.
+### Input examples
 
-The existing `/jaw` and `jaw_to_joint_states` path is left unchanged. This
-package does not include `jaw_joint` in its messages.
+```json
+{"intent":"nod_yes","confidence":0.96}
+{"intent":"raise_hand","side":"left","confidence":0.99}
+{"intent":"say_hello","confidence":0.94}
+{"intent":"nod","confidence":0.93}
+{"intent":"wave_goodbye","confidence":0.92}
+{"intent":"lower_hand","side":"left","confidence":0.98}
+{"intent":"sequence","commands":[{"intent":"raise_hand","side":"right"},{"intent":"wave","side":"right"}],"confidence":0.97}
+{"intent":"none","confidence":0.99}
+```
+
+`say_hello` and `wave_goodbye` wave left then right by default; set `side` to
+`left` or `right` for a one-sided wave. Sequences are limited to four
+allowlisted actions and execute one at a time using motion-manager completion
+status. Invalid, low-confidence, unknown, or concurrent intents are ignored;
+ordinary text is not parsed as a robot command in this node.
+
+The intent producer must publish only after its own intent extraction/decision.
+For agreement nods, emit `nod_yes` only when the assistant is actually choosing
+to agree, not merely because the user asked a question. This keeps inference
+outside the ROS robot-control boundary and avoids keyword-triggered movement.
 
 ## Interfaces
 
-- Subscribe: `/robot/action` (`std_msgs/msg/String`)
-- Publish: `/robot/action/status` (`std_msgs/msg/String`, JSON payload)
+- Subscribe: `/robot/intent` (`std_msgs/msg/String`, structured JSON above)
+- Publish: `/robot/action` (`std_msgs/msg/String`, consumed by motion manager)
+- Subscribe: `/robot/action/status` for sequencing
 - Publish: `/joint_states` (`sensor_msgs/msg/JointState`)
+- Subscribe: `/jaw` (`std_msgs/msg/Float64`)
 
-Action JSON examples:
+## RViz
 
-```json
-{"action":"raise_hand","side":"left"}
-{"action":"wave","side":"left"}
-{"action":"nod","direction":"yes"}
-```
-
-The manager rejects a new action while another gesture is running. It reports
-`accepted`, `rejected`, and `completed` status messages. This initial version
-does not implement cancellation or gesture preemption.
-
-## Build
-
-Copy this package directory into your ROS 2 workspace `src` directory:
+`inmoov_description display.launch.py` starts the robot description,
+motion manager, intent bridge, and RViz. Publish an extracted intent for a
+test:
 
 ```bash
-cd ~/ros2_ws/src
-# copy/extract inmoov_motion_manager here
+ros2 topic pub --once /robot/intent std_msgs/msg/String \
+  "{data: '{\"intent\":\"raise_hand\",\"side\":\"left\",\"confidence\":0.99}'}"
+```
 
+Manual action testing remains available on `/robot/action`:
+
+```bash
+ros2 topic pub --once /robot/action std_msgs/msg/String \
+  "{data: '{\"action\":\"nod\",\"direction\":\"yes\"}'}"
+```
+
+Build and launch:
+
+```bash
 cd ~/ros2_ws
-rosdep install --from-paths src --ignore-src -r -y
-colcon build --packages-select inmoov_motion_manager
+colcon build --packages-up-to inmoov_description --symlink-install
 source install/setup.bash
+ros2 launch inmoov_description display.launch.py
 ```
 
-If `rosdep` does not install PyYAML, install the ROS distribution's
-`python3-yaml` package using your system package manager.
+## Safety note
 
-## Configure
-
-Edit:
-
-```text
-src/inmoov_motion_manager/config/gestures.yaml
-```
-
-For every joint used by a gesture:
-1. Use the exact joint name from the URDF.
-2. Set a safe `home` position.
-3. Set the URDF's valid lower and upper limits.
-4. Replace example gesture positions with values that move in the intended
-   direction and remain within limits.
-
-Rebuild after editing if using the installed package copy:
-
-```bash
-colcon build --packages-select inmoov_motion_manager
-source install/setup.bash
-```
-
-## Run
-
-```bash
-ros2 launch inmoov_motion_manager motion_manager.launch.py
-```
-
-Check the interfaces:
-
-```bash
-ros2 topic info /robot/action
-ros2 topic info /joint_states
-ros2 topic echo /robot/action/status
-```
-
-## Test gestures
-
-In another sourced terminal:
-
-```bash
-ros2 topic pub --once /robot/action std_msgs/msg/String   "{data: '{"action":"raise_hand","side":"left"}'}"
-
-ros2 topic pub --once /robot/action std_msgs/msg/String   "{data: '{"action":"wave","side":"left"}'}"
-
-ros2 topic pub --once /robot/action std_msgs/msg/String   "{data: '{"action":"nod","direction":"yes"}'}"
-```
-
-Open RViz with your existing InMoov display configuration and verify the
-movement. The node publishes all joints configured in `gestures.yaml` on each
-update, so avoid configuring the same joint in another independent publisher.
-
-## Current limitations
-
-- RViz visualization only; no motor, collision, inertia, or dynamics control.
-- Only one gesture can run at a time.
-- No action cancellation or safety-rated stop yet.
-- No automatic return to home after a gesture; gesture frames must include
-  return-to-home positions if desired.
-- Gesture joint names and angles require validation against the actual URDF.
+These are visualization gestures only. Do not connect this path to motor
+control without separate limits, authorization, emergency-stop, and hardware
+validation.

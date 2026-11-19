@@ -142,7 +142,6 @@ class MotionManager(Node):
             if not isinstance(params, dict):
                 raise ValueError('"parameters" must be an object')
 
-            # Support the simple {"action":"raise_hand","side":"left"} form.
             params = {**request, **params}
             gesture_name = self._resolve_gesture(action, params)
             if gesture_name not in self.gestures:
@@ -175,6 +174,8 @@ class MotionManager(Node):
     def _resolve_gesture(action, params):
         if action == 'raise_hand':
             return f"raise_{params.get('side', 'left')}_hand"
+        if action == 'lower_hand':
+            return f"lower_{params.get('side', 'left')}_hand"
         if action == 'wave':
             return f"wave_{params.get('side', 'left')}"
         if action == 'nod':
@@ -200,9 +201,6 @@ class MotionManager(Node):
     def _tick(self):
         with self._lock:
             if not self._active:
-                # JointState is not latched. Republish the complete configured
-                # state while idle so robot_state_publisher receives it even if
-                # its subscription starts after this node's initial publish.
                 self._publish_joint_state()
                 return
 

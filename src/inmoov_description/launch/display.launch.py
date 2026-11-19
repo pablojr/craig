@@ -13,7 +13,6 @@ def generate_launch_description():
     gestures_file = os.path.join(motion_manager_pkg, 'config', 'gestures.yaml')
     rviz_config_file = os.path.join(description_pkg, 'urdf.rviz')
 
-    # Keep the RViz jaw travel wide enough for the viseme bridge's /jaw targets.
     robot_description = ParameterValue(
         Command(['xacro ', xacro_file, ' jaw_upper_limit:=0.349']),
         value_type=str,
@@ -27,8 +26,6 @@ def generate_launch_description():
             output='screen',
             parameters=[{'use_sim_time': False, 'robot_description': robot_description}],
         ),
-        # MotionManager is the sole /joint_states publisher in this RViz launch.
-        # It also incorporates /jaw targets, replacing jaw_state_merger here.
         Node(
             package='inmoov_motion_manager',
             executable='motion_manager',
@@ -40,6 +37,21 @@ def generate_launch_description():
                 'action_topic': '/robot/action',
                 'status_topic': '/robot/action/status',
                 'publish_rate_hz': 30.0,
+            }],
+        ),
+        # Intent extraction stays outside the speech server. This node only
+        # validates a structured /robot/intent and forwards allowlisted actions.
+        Node(
+            package='inmoov_motion_manager',
+            executable='intent_bridge',
+            name='inmoov_intent_bridge',
+            output='screen',
+            parameters=[{
+                'intent_topic': '/robot/intent',
+                'action_topic': '/robot/action',
+                'action_status_topic': '/robot/action/status',
+                'minimum_confidence': 0.80,
+                'max_sequence_length': 4,
             }],
         ),
         Node(

@@ -1,7 +1,7 @@
 # Configuration schema consumed by motion_manager.py.
 # Joint positions and limits are in radians. Values are based on the InMoov
-# URDF and src/inmoov_bringup/config/config.yaml. Keep hardware disabled while
-# validating these example poses; this node is intended for RViz visualization.
+# URDF and src/inmoov_bringup/config/config.yaml. This node is for RViz only;
+# validate poses before any future hardware integration.
 joints:
   waist_pan_joint:       {home: 0.0, min: -1.570796, max: 1.570796}
   waist_roll_joint:      {home: 0.0, min: -0.261799, max: 0.261799}
@@ -75,6 +75,16 @@ gestures:
           l_upper_arm_roll_joint: 0.0
           l_elbow_flex_joint: -0.75
 
+  lower_left_hand:
+    frames:
+      - duration: 1.5
+        positions:
+          l_shoulder_lift_joint: 0.0
+          l_shoulder_out_joint: 0.087266
+          l_upper_arm_roll_joint: 0.0
+          l_elbow_flex_joint: -0.261799
+          l_wrist_roll_joint: 0.0
+
   raise_right_hand:
     frames:
       - duration: 2.0
@@ -83,6 +93,16 @@ gestures:
           r_shoulder_out_joint: -0.65
           r_upper_arm_roll_joint: 0.0
           r_elbow_flex_joint: -0.75
+
+  lower_right_hand:
+    frames:
+      - duration: 1.5
+        positions:
+          r_shoulder_lift_joint: 0.0
+          r_shoulder_out_joint: -0.087266
+          r_upper_arm_roll_joint: 0.0
+          r_elbow_flex_joint: -0.261799
+          r_wrist_roll_joint: 0.0
 
   wave_left:
     frames:
@@ -94,14 +114,11 @@ gestures:
           l_elbow_flex_joint: -0.75
           l_wrist_roll_joint: 0.45
       - duration: 0.6
-        positions:
-          l_wrist_roll_joint: 1.0
+        positions: {l_wrist_roll_joint: 1.0}
       - duration: 0.6
-        positions:
-          l_wrist_roll_joint: 0.45
+        positions: {l_wrist_roll_joint: 0.45}
       - duration: 0.6
-        positions:
-          l_wrist_roll_joint: 1.0
+        positions: {l_wrist_roll_joint: 1.0}
 
   wave_right:
     frames:
@@ -113,14 +130,11 @@ gestures:
           r_elbow_flex_joint: -0.75
           r_wrist_roll_joint: -0.45
       - duration: 0.6
-        positions:
-          r_wrist_roll_joint: -1.0
+        positions: {r_wrist_roll_joint: -1.0}
       - duration: 0.6
-        positions:
-          r_wrist_roll_joint: -0.45
+        positions: {r_wrist_roll_joint: -0.45}
       - duration: 0.6
-        positions:
-          r_wrist_roll_joint: -1.0
+        positions: {r_wrist_roll_joint: -1.0}
 
   nod_yes:
     frames:

@@ -18,11 +18,12 @@ setup(
     zip_safe=True,
     maintainer='InMoov Project',
     maintainer_email='maintainer@example.com',
-    description='Configurable RViz joint-state gesture manager for InMoov.',
+    description='RViz gesture manager and structured robot-intent bridge for InMoov.',
     license='Apache-2.0',
     entry_points={
         'console_scripts': [
             'motion_manager = inmoov_motion_manager.motion_manager:main',
+            'intent_bridge = inmoov_motion_manager.intent_bridge:main',
         ],
     },
 )
