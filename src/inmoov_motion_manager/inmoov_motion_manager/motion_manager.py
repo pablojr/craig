@@ -200,6 +200,10 @@ class MotionManager(Node):
     def _tick(self):
         with self._lock:
             if not self._active:
+                # JointState is not latched. Republish the complete configured
+                # state while idle so robot_state_publisher receives it even if
+                # its subscription starts after this node's initial publish.
+                self._publish_joint_state()
                 return
 
             frame = self._frames[self._frame_index]
