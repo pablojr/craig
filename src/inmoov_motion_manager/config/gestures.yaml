@@ -75,6 +75,178 @@ gestures:
           l_upper_arm_roll_joint: 0.0
           l_elbow_flex_joint: -0.75
 
+  raise_right_hand:
+    frames:
+      - duration: 2.0
+        positions:
+          r_shoulder_lift_joint: 0.45
+          r_shoulder_out_joint: -0.65
+          r_upper_arm_roll_joint: 0.0
+          r_elbow_flex_joint: -0.75
+
+  wave_left:
+    frames:
+      - duration: 1.5
+        positions:
+          l_shoulder_lift_joint: 0.45
+          l_shoulder_out_joint: 0.65
+          l_upper_arm_roll_joint: 0.0
+          l_elbow_flex_joint: -0.75
+          l_wrist_roll_joint: 0.45
+      - duration: 0.6
+        positions:
+          l_wrist_roll_joint: 1.0
+      - duration: 0.6
+        positions:
+          l_wrist_roll_joint: 0.45
+      - duration: 0.6
+        positions:
+          l_wrist_roll_joint: 1.0
+
+  wave_right:
+    frames:
+      - duration: 1.5
+        positions:
+          r_shoulder_lift_joint: 0.45
+          r_shoulder_out_joint: -0.65
+          r_upper_arm_roll_joint: 0.0
+          r_elbow_flex_joint: -0.75
+          r_wrist_roll_joint: -0.45
+      - duration: 0.6
+        positions:
+          r_wrist_roll_joint: -1.0
+      - duration: 0.6
+        positions:
+          r_wrist_roll_joint: -0.45
+      - duration: 0.6
+        positions:
+          r_wrist_roll_joint: -1.0
+
+  nod_yes:
+    frames:
+      - duration: 0.5
+        positions: {head_tilt_joint: 0.18}
+      - duration: 0.5
+        positions: {head_tilt_joint: -0.18}
+      - duration: 0.5
+        positions: {head_tilt_joint: 0.0}
+
+  look_left:
+    frames:
+      - duration: 1.0
+        positions: {head_pan_joint: 0.6, eyes_pan_joint: 0.3}
+
+  look_right:
+    frames:
+      - duration: 1.0
+        positions: {head_pan_joint: -0.8, eyes_pan_joint: -0.3}
+
+  jaw_open:
+    frames:
+      - duration: 0.5
+        positions: {jaw_joint: 0.08}
+
+  jaw_close:
+    frames:
+      - duration: 0.5
+        positions: {jaw_joint: 0.0}
+
+  hands_open:
+    frames:
+      - duration: 1.5
+        positions:
+          l_thumb_joint: -0.05
+          l_index_joint: -0.05
+          l_middle_joint: -0.05
+          l_ring_joint: -0.05
+          l_pinky_joint: -0.05
+          r_thumb_joint: -0.05
+          r_index_joint: -0.05
+          r_middle_joint: -0.05
+          r_ring_joint: -0.05
+          r_pinky_joint: -0.05
+
+  hands_closed:
+    frames:
+      - duration: 1.5
+        positions:
+          l_thumb_joint: 0.7
+          l_index_joint: 0.8
+          l_middle_joint: 0.8
+          l_ring_joint: 0.8
+          l_pinky_joint: 0.8
+          r_thumb_joint: 0.7
+          r_index_joint: 0.8
+          r_middle_joint: 0.8
+          r_ring_joint: 0.8
+          r_pinky_joint: 0.8
+
+  # ---- New gestures ----
+  shrug:
+    frames:
+      - duration: 0.5
+        positions: {l_shoulder_lift_joint: 0.3, r_shoulder_lift_joint: 0.3}
+      - duration: 0.5
+        positions: {l_shoulder_lift_joint: 0.0, r_shoulder_lift_joint: 0.0}
+
+  bow:
+    frames:
+      - duration: 1.0
+        positions: {waist_pan_joint: 0.2, head_tilt_joint: 0.1}
+      - duration: 1.0
+        positions: {waist_pan_joint: 0.0, head_tilt_joint: 0.0}
+
+  idle_sway:
+    frames:
+      - duration: 3.0
+        positions: {head_pan_joint: 0.05, waist_pan_joint: 0.05}
+      - duration: 3.0
+        positions: {head_pan_joint: -0.05, waist_pan_joint: -0.05}
+      - duration: 3.0
+        positions: {head_pan_joint: 0.0, waist_pan_joint: 0.0}
+
+  neutral:
+    frames:
+      - duration: 2.0
+        positions:
+          waist_pan_joint: 0.0
+          waist_roll_joint: 0.0
+          head_pan_joint: 0.0
+          head_tilt_joint: 0.0
+          head_roll_joint: 0.0
+          eyes_pan_joint: 0.0
+          eyes_tilt_joint: 0.0
+          jaw_joint: 0.0
+          l_shoulder_lift_joint: 0.0
+          l_shoulder_out_joint: 0.087266
+          l_upper_arm_roll_joint: 0.0
+          l_elbow_flex_joint: -0.261799
+          l_wrist_roll_joint: 0.0
+          r_shoulder_lift_joint: 0.0
+          r_shoulder_out_joint: -0.087266
+          r_upper_arm_roll_joint: 0.0
+          r_elbow_flex_joint: -0.261799
+          r_wrist_roll_joint: 0.0
+          l_thumb_joint: 0.0
+          l_index_joint: 0.0
+          l_middle_joint: 0.0
+          l_ring_joint: 0.0
+          l_pinky_joint: 0.0
+          r_thumb_joint: 0.0
+          r_index_joint: 0.0
+          r_middle_joint: 0.0
+          r_ring_joint: 0.0
+          r_pinky_joint: 0.0
+
+  raise_left_hand:
+    frames:
+      - duration: 2.0
+        positions:
+          l_shoulder_lift_joint: 0.45
+          l_shoulder_out_joint: 0.65
+          l_upper_arm_roll_joint: 0.0
+          l_elbow_flex_joint: -0.75
+
   lower_left_hand:
     frames:
       - duration: 1.5
