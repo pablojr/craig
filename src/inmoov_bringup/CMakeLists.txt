@@ -3,11 +3,15 @@ project(inmoov_bringup)
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY tools/ DESTINATION lib/${PROJECT_NAME})
+# Install configuration and launch files
+install(DIRECTORY config launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+# Install executable Python scripts (e.g., idle_animator)
+install(PROGRAMS
   tools/idle_animator.py
   DESTINATION lib/${PROJECT_NAME}
-)
-  DESTINATION share/${PROJECT_NAME}
 )
 
 ament_package()
