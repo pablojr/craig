@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
-"""ROS 2 WebSocket proxy for S2S viseme interception with smooth jaw control.
+"""ROS 2 WebSocket proxy for S2S viseme interception with smooth jaw control
+and LLM-driven gesture triggering.
 
-The S2S talk client connects to this node. The node opens one upstream
+The S2S talk client connects to this node.  The node opens one upstream
 connection to the S2S server, consumes timed viseme events to publish smooth
-/jaw commands suitable for Gazebo humanoid joint controllers, and forwards
-every other WebSocket frame unchanged in both directions.
+/jaw commands, accumulates the assistant transcript to select a gesture via
+the rule-based classifier, and forwards every other WebSocket frame unchanged
+in both directions.
+
+Topics published
+----------------
+/jaw            std_msgs/Float64   – jaw position in radians (from visemes)
+/robot/action   std_msgs/String    – JSON gesture command, e.g.
+                                     {"action": "wave_right"}
 """
 
 import asyncio
@@ -15,7 +23,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, String
 
 # Use the legacy API explicitly: it supports the one-argument handler and
 # extra_headers interface used by this proxy across websockets releases.
@@ -32,13 +40,22 @@ except ImportError:
 
 from websockets.exceptions import ConnectionClosed
 
+from .gesture_classifier import classify_with_confidence
+
 
 class SpeechToSpeechVisemeBridge(Node):
     def __init__(self):
         super().__init__("s2s_viseme_bridge_node")
 
+        # ------------------------------------------------------------------ #
+        # Publishers
+        # ------------------------------------------------------------------ #
         self.jaw_pub = self.create_publisher(Float64, "/jaw", 10)
+        self.action_pub = self.create_publisher(String, "/robot/action", 10)
 
+        # ------------------------------------------------------------------ #
+        # Parameters
+        # ------------------------------------------------------------------ #
         self.declare_parameter("server_url", "ws://192.168.0.202:8765/v1/realtime")
         self.declare_parameter("listen_host", "0.0.0.0")
         self.declare_parameter("listen_port", 18765)
@@ -50,6 +67,11 @@ class SpeechToSpeechVisemeBridge(Node):
         self.declare_parameter("jaw_max", 0.349)
         self.declare_parameter("publish_epsilon", 0.002)
 
+        # Gesture parameters
+        self.declare_parameter("gesture_enabled", True)
+        self.declare_parameter("gesture_suppress_neutral", True)  # don't publish "neutral"
+        self.declare_parameter("gesture_min_text_length", 10)     # chars before classifying
+
         self.server_url = self.get_parameter("server_url").get_parameter_value().string_value
         self.listen_host = self.get_parameter("listen_host").get_parameter_value().string_value
         self.listen_port = self.get_parameter("listen_port").get_parameter_value().integer_value
@@ -60,7 +82,13 @@ class SpeechToSpeechVisemeBridge(Node):
         self.jaw_max = self.get_parameter("jaw_max").get_parameter_value().double_value
         self.publish_epsilon = self.get_parameter("publish_epsilon").get_parameter_value().double_value
 
-        # Microsoft Viseme IDs (0-21) mapped to normalized jaw openness (0.0 to 1.0)
+        self._gesture_enabled = self.get_parameter("gesture_enabled").get_parameter_value().bool_value
+        self._gesture_suppress_neutral = self.get_parameter("gesture_suppress_neutral").get_parameter_value().bool_value
+        self._gesture_min_text_length = self.get_parameter("gesture_min_text_length").get_parameter_value().integer_value
+
+        # ------------------------------------------------------------------ #
+        # Microsoft Viseme ID → normalised jaw openness (0..1)
+        # ------------------------------------------------------------------ #
         self.ms_viseme_jaw_map = {
             0: 0.0, 1: 0.7, 2: 0.9, 3: 0.8, 4: 0.6, 5: 0.5,
             6: 0.4, 7: 0.3, 8: 0.7, 9: 0.8, 10: 0.7, 11: 0.8,
@@ -68,11 +96,15 @@ class SpeechToSpeechVisemeBridge(Node):
             18: 0.1, 19: 0.3, 20: 0.4, 21: 0.0,
         }
 
+        # ------------------------------------------------------------------ #
+        # Async / threading state
+        # ------------------------------------------------------------------ #
         self._loop = None
         self._stop_event = None
         self._server = None
         self._stopping = threading.Event()
 
+        # Viseme jaw timeline
         self._state_lock = threading.Lock()
         self._active_response_id = None
         self._response_base_time = None
@@ -80,8 +112,15 @@ class SpeechToSpeechVisemeBridge(Node):
         self._timeline = []
         self._response_end_s = 0.0
 
+        # Jaw smoother state
         self._current_norm_jaw = 0.0
         self._last_published_value = None
+
+        # Transcript accumulation (for gesture classification)
+        self._transcript_lock = threading.Lock()
+        self._transcript_parts: list[str] = []
+        self._transcript_response_id: str | None = None
+        self._gesture_fired_for_response: str | None = None
 
         self.get_logger().info(f"Upstream S2S server: {self.server_url}")
         self.get_logger().info(
@@ -92,11 +131,19 @@ class SpeechToSpeechVisemeBridge(Node):
             f"attack={self.attack_tau_s}s, release={self.release_tau_s}s, "
             f"range=[{self.jaw_min}, {self.jaw_max}] rad"
         )
+        self.get_logger().info(
+            f"Gesture triggering: enabled={self._gesture_enabled}, "
+            f"suppress_neutral={self._gesture_suppress_neutral}"
+        )
 
         self.bridge_thread = threading.Thread(
             target=self._run_proxy, name="s2s-websocket-proxy", daemon=True
         )
         self.bridge_thread.start()
+
+    # ======================================================================
+    # Proxy entry point
+    # ======================================================================
 
     def _run_proxy(self):
         try:
@@ -130,9 +177,14 @@ class SpeechToSpeechVisemeBridge(Node):
             with suppress(asyncio.CancelledError):
                 await control_task
             self._reset_timeline_state()
+            self._reset_transcript_state()
             self._server = None
             self._loop = None
             self._stop_event = None
+
+    # ======================================================================
+    # WebSocket connection handling
+    # ======================================================================
 
     def _upstream_url_for_client(self, client_ws, handler_args):
         client_path = handler_args[0] if handler_args else ""
@@ -207,6 +259,7 @@ class SpeechToSpeechVisemeBridge(Node):
             self.get_logger().error(f"Proxy connection error: {exc}")
         finally:
             self._reset_timeline_state()
+            self._reset_transcript_state()
             self.publish_jaw(self.jaw_min, force=True)
             if upstream_ws is not None:
                 with suppress(Exception):
@@ -223,6 +276,10 @@ class SpeechToSpeechVisemeBridge(Node):
                     continue
             await destination.send(message)
 
+    # ======================================================================
+    # Server event processing
+    # ======================================================================
+
     @staticmethod
     def _parse_event_json(message):
         clean_msg = message.strip()
@@ -233,21 +290,149 @@ class SpeechToSpeechVisemeBridge(Node):
         except (json.JSONDecodeError, TypeError):
             return None
 
-    def _handle_server_event(self, data):
-        event_type = data.get("type")
+    def _handle_server_event(self, data: dict) -> bool:
+        """Inspect a server→client event.  Return True to consume (not forward).
+
+        Returns False for all events so they are always forwarded to the
+        talk client — we only *observe* the stream, never swallow frames.
+        """
+        event_type = data.get("type", "")
+
+        # --- Viseme events ------------------------------------------------
         if event_type == "speech_to_speech.output_audio.visemes" or "visemes" in data:
             visemes = data.get("visemes")
             response_id = data.get("response_id") or "default"
             if isinstance(visemes, list):
                 self._ingest_viseme_batch(response_id, visemes)
-            return True
+            return False  # forward to client
 
+        # --- Transcript streaming (accumulate for gesture classification) --
+        if event_type == "response.audio_transcript.delta":
+            delta = data.get("delta", "")
+            response_id = data.get("response_id", "default")
+            if delta:
+                self._accumulate_transcript(response_id, delta)
+            return False
+
+        # --- Response complete: classify and fire gesture ------------------
+        if event_type == "response.done":
+            # Extract full transcript from response.done payload (most reliable)
+            transcript = self._extract_transcript_from_done(data)
+            response_id = (
+                data.get("response", {}).get("id")
+                or data.get("response_id")
+                or "default"
+            )
+            if transcript:
+                # Prefer the done-payload transcript (complete) over accumulated deltas
+                with self._transcript_lock:
+                    self._transcript_parts = [transcript]
+                    self._transcript_response_id = response_id
+            self._maybe_fire_gesture(response_id)
+            return False
+
+        # --- Speech events: reset state -----------------------------------
         if event_type in (
-            "speech.stopped", "input_audio_buffer.speech_started", "response.cancelled",
+            "speech.stopped",
+            "input_audio_buffer.speech_started",
+            "response.cancelled",
         ):
-            self.get_logger().debug(f"Event {event_type}; resetting jaw timeline")
+            self.get_logger().debug(f"Event {event_type}; resetting jaw & transcript state")
             self._reset_timeline_state()
+            self._reset_transcript_state()
+
         return False
+
+    @staticmethod
+    def _extract_transcript_from_done(data: dict) -> str:
+        """Pull the full assistant text from a response.done event."""
+        try:
+            outputs = data.get("response", {}).get("output", [])
+            parts: list[str] = []
+            for item in outputs:
+                for content in item.get("content", []):
+                    t = content.get("transcript", "")
+                    if t:
+                        parts.append(t)
+            return " ".join(parts)
+        except Exception:
+            return ""
+
+    # ======================================================================
+    # Transcript accumulation
+    # ======================================================================
+
+    def _accumulate_transcript(self, response_id: str, delta: str) -> None:
+        with self._transcript_lock:
+            if response_id != self._transcript_response_id:
+                self._transcript_parts = []
+                self._transcript_response_id = response_id
+            self._transcript_parts.append(delta)
+
+            # Fire gesture eagerly once we have enough text (reduces latency)
+            full_text = "".join(self._transcript_parts)
+            if (
+                self._gesture_fired_for_response != response_id
+                and len(full_text) >= self._gesture_min_text_length
+            ):
+                self._classify_and_publish(full_text, response_id, source="delta")
+
+    def _reset_transcript_state(self) -> None:
+        with self._transcript_lock:
+            self._transcript_parts = []
+            self._transcript_response_id = None
+            self._gesture_fired_for_response = None
+
+    # ======================================================================
+    # Gesture classification and publishing
+    # ======================================================================
+
+    def _maybe_fire_gesture(self, response_id: str) -> None:
+        """Called on response.done — fire if not already done from deltas."""
+        with self._transcript_lock:
+            if self._gesture_fired_for_response == response_id:
+                return  # already fired from early delta
+            full_text = "".join(self._transcript_parts)
+
+        self._classify_and_publish(full_text, response_id, source="done")
+
+    def _classify_and_publish(self, text: str, response_id: str, source: str) -> None:
+        """Classify text and publish gesture action if appropriate.
+
+        Must be called with self._transcript_lock held OR be thread-safe on its own.
+        Uses _gesture_fired_for_response to ensure one gesture per response.
+        """
+        if not self._gesture_enabled:
+            return
+
+        with self._transcript_lock:
+            if self._gesture_fired_for_response == response_id:
+                return
+            self._gesture_fired_for_response = response_id
+
+        gesture, matched = classify_with_confidence(text)
+
+        if self._gesture_suppress_neutral and gesture == "neutral":
+            self.get_logger().debug(
+                f"[gesture/{source}] Suppressed neutral for response_id={response_id}"
+            )
+            return
+
+        self.get_logger().info(
+            f"[gesture/{source}] '{gesture}' (matched: '{matched}') "
+            f"for response_id={response_id}, text_len={len(text)}"
+        )
+        self._publish_gesture(gesture)
+
+    def _publish_gesture(self, gesture: str) -> None:
+        msg = String()
+        msg.data = json.dumps({"action": gesture})
+        self.action_pub.publish(msg)
+        self.get_logger().debug(f"Published /robot/action: {msg.data}")
+
+    # ======================================================================
+    # Viseme jaw timeline (unchanged from original)
+    # ======================================================================
 
     def _ingest_viseme_batch(self, response_id, visemes):
         if self._loop is None or not visemes:
@@ -348,6 +533,10 @@ class SpeechToSpeechVisemeBridge(Node):
         msg.data = val
         self.jaw_pub.publish(msg)
         self.get_logger().debug(f"Published /jaw: {msg.data:.4f} rad")
+
+    # ======================================================================
+    # Cleanup
+    # ======================================================================
 
     def destroy_node(self):
         self._stopping.set()

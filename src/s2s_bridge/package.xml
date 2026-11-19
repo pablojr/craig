@@ -10,6 +10,7 @@
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <depend>python3-websockets</depend>
+  <!-- gesture_classifier uses only stdlib; no extra pip deps needed -->
 
   <export>
     <build_type>ament_python</build_type>
