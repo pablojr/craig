@@ -61,4 +61,12 @@ def generate_launch_description():
             output='screen',
             arguments=['-d', rviz_config_file],
         ),
+        # Idle animator – runs independently and publishes low‑priority actions
+        Node(
+            package='inmoov_bringup',
+            executable='idle_animator.py',
+            name='idle_animator',
+            output='screen',
+            parameters=[{'idle_interval_seconds': 30.0, 'gesture_name': 'idle_sway'}],
+        ),
     ])
