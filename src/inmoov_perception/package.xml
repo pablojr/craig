@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>inmoov_perception</name>
+  <version>0.1.0</version>
+  <description>Vision perception node for InMoov robot (YOLO tracking + Ollama VLM query).</description>
+  <maintainer email="pablo@localhost">Pablo</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>cv_bridge</depend>
+  <exec_depend>opencv-python</exec_depend>
+  <exec_depend>ultralytics</exec_depend>
+  <exec_depend>requests</exec_depend>
+</package>
