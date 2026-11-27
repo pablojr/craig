@@ -3,7 +3,7 @@
   <name>inmoov_perception</name>
   <version>0.1.0</version>
   <description>Vision perception node for InMoov robot (YOLO tracking + Ollama VLM query).</description>
-  <maintainer email="pablo@localhost">Pablo</maintainer>
+  <maintainer email="pablo@example.com">Pablo</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
